@@ -63,3 +63,59 @@ VALUES
   250, 250,
   1
 );
+
+-- Produtos abaixo: productUid e custo de produção confirmados via API da
+-- Gelato (product.gelatoapis.com) em 2026-07-08 para o Brasil (BRL), mesma
+-- fórmula de preço e mesmo caráter "placeholder" dos mockups/print_area_json
+-- acima (ajustar quando tiver fotos reais e specs de impressão confirmadas).
+
+INSERT INTO products (id, name, description, base_price_cents, pod_product_uid, mockup_image_url, print_area_json, product_type, print_width_mm, print_height_mm, active)
+VALUES
+(
+  'moletom-branco',
+  'Moletom com capuz branco personalizado',
+  'Moletom unissex, algodão/poliéster, estampa digital frontal.',
+  35234, -- custo Gelato: R$191,29 -> preço: R$352,34
+  'apparel_product_gca_hoodie_gsc_pullover_gcu_unisex_gqa_classic_gsi_m_gco_white_gpr_4-4',
+  '/mockups/moletom-branco.svg',
+  '{"x":150,"y":140,"width":300,"height":340}',
+  'customizable',
+  300, 360,
+  1
+),
+(
+  'quadro-tela-30x40',
+  'Quadro em tela 30x40cm personalizado',
+  'Impressão em tela, moldura de madeira FSC 2cm, acabamento fosco.',
+  19958, -- custo Gelato: R$108,35 -> preço: R$199,58
+  'canvas_product_cf_300x400-mm_cm_canvas_cfrm_wood-fsc-2-cm_cl_4-0_ver',
+  '/mockups/quadro-tela-30x40.svg',
+  '{"x":150,"y":70,"width":300,"height":400}',
+  'customizable',
+  300, 400,
+  1
+),
+(
+  'garrafa-termica-inox',
+  'Garrafa térmica de inox personalizada',
+  'Garrafa inox 500ml, parede dupla, estampa ao redor.',
+  22447, -- custo Gelato: R$121,87 -> preço: R$224,47
+  'bottle_product_bsz_17-oz_bmat_stainless-steel-white_cl_4-0',
+  '/mockups/garrafa-termica-inox.svg',
+  '{"x":220,"y":230,"width":160,"height":140}',
+  'customizable',
+  180, 90,
+  1
+),
+(
+  'bone-branco',
+  'Boné aba curva branco personalizado',
+  'Boné dad hat, estampa digital frontal (DTF).',
+  18954, -- custo Gelato: R$102,91 -> preço: R$189,54
+  'apparel_product_gca_hat_gsc_dad-hat_gcu_unisex_gqa_classic_gsi_onesize_gco_white_gpr_4-0-dtf_as-colour_1114',
+  '/mockups/bone-branco.svg',
+  '{"x":230,"y":260,"width":140,"height":100}',
+  'customizable',
+  100, 70,
+  1
+);
