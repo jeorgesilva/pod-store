@@ -1,0 +1,26 @@
+name = "pod-store"
+main = "src/index.ts"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+# Serves everything in /public directly. Requests that don't match a static
+# file fall through to the Worker (src/index.ts), which handles /api/*.
+[assets]
+directory = "./public"
+binding = "ASSETS"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "pod-store-db"
+database_id = "66364749-baad-4a79-817d-ff10e1a1e812"
+
+[[r2_buckets]]
+binding = "ARTWORK"
+bucket_name = "pod-store-artwork"
+
+# Non-secret configuration. Real secrets (API keys/tokens) must NOT go here —
+# set them with `wrangler secret put <NAME>` instead. See README.md.
+[vars]
+POD_PROVIDER = "gelato"           # "gelato" or "montink"
+STORE_CURRENCY = "BRL"
+PUBLIC_ARTWORK_BASE_URL = "https://pub-1f1fed2e33dc4b17881c2a545e7f490c.r2.dev"

@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Loja personalizada</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600&family=Inter:wght@400;500;600&display=swap" rel="stylesheet" />
+<link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+
+<header class="site-header">
+  <a href="/" class="wordmark">sua&nbsp;loja</a>
+  <button id="cart-button" class="cart-button" type="button">
+    Carrinho <span id="cart-count" class="cart-count">0</span>
+  </button>
+</header>
+
+<main>
+
+  <!-- CATALOG ------------------------------------------------------ -->
+  <section id="view-catalog" class="view">
+    <div class="view-intro">
+      <p class="eyebrow">Produtos personalizados</p>
+      <h1>Escolha uma peça e faça do seu jeito</h1>
+    </div>
+    <div id="product-grid" class="product-grid" aria-live="polite">
+      <p class="loading">Carregando produtos…</p>
+    </div>
+  </section>
+
+  <!-- CUSTOMIZER ----------------------------------------------------- -->
+  <section id="view-customize" class="view" hidden>
+    <button class="back-link" data-action="back-to-catalog" type="button">&larr; Voltar ao catálogo</button>
+
+    <div class="customize-layout">
+      <div class="canvas-frame">
+        <canvas id="fabric-canvas"></canvas>
+      </div>
+
+      <div class="customize-panel">
+        <h2 id="customize-product-name">&nbsp;</h2>
+        <p id="customize-product-price" class="price"></p>
+
+        <div class="tool-group">
+          <label class="tool-button" for="upload-image">
+            Enviar foto
+            <input id="upload-image" type="file" accept="image/*" hidden />
+          </label>
+          <button class="tool-button" data-action="add-text" type="button">Adicionar texto</button>
+          <button class="tool-button" data-action="remove-selected" type="button">Remover selecionado</button>
+        </div>
+
+        <div class="tool-group tool-group--inline">
+          <label for="text-color">Cor do texto</label>
+          <input id="text-color" type="color" value="#1b1d1b" />
+        </div>
+
+        <p class="hint">Arraste, redimensione e gire livremente. Só o que estiver dentro da área
+          tracejada é enviado para impressão.</p>
+
+        <p id="quality-warning" class="error-message" hidden></p>
+
+        <label class="tool-group tool-group--inline">
+          Quantidade
+          <input id="quantity-input" type="number" min="1" value="1" />
+        </label>
+
+        <button id="add-to-cart-button" class="primary-button" type="button">Adicionar ao carrinho</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- READY PRODUCT (fixed artwork, no editor) ------------------------ -->
+  <section id="view-ready" class="view" hidden>
+    <button class="back-link" data-action="back-to-catalog" type="button">&larr; Voltar ao catálogo</button>
+
+    <div class="customize-layout">
+      <div class="canvas-frame">
+        <img id="ready-product-image" class="ready-product-image" alt="" />
+      </div>
+
+      <div class="customize-panel">
+        <h2 id="ready-product-name">&nbsp;</h2>
+        <p id="ready-product-price" class="price"></p>
+        <p class="hint">Este produto já vem com a estampa pronta, sem personalização.</p>
+
+        <label class="tool-group tool-group--inline">
+          Quantidade
+          <input id="ready-quantity-input" type="number" min="1" value="1" />
+        </label>
+
+        <button id="ready-add-to-cart-button" class="primary-button" type="button">Adicionar ao carrinho</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- CART / CHECKOUT ------------------------------------------------- -->
+  <section id="view-cart" class="view" hidden>
+    <button class="back-link" data-action="back-to-catalog" type="button">&larr; Continuar comprando</button>
+    <h1>Seu carrinho</h1>
+
+    <div id="cart-items" class="cart-items"></div>
+    <p id="cart-empty" class="hint" hidden>Seu carrinho está vazio.</p>
+    <p class="cart-total">Total: <strong id="cart-total">R$ 0,00</strong></p>
+
+    <form id="checkout-form" class="checkout-form">
+      <h2>Seus dados</h2>
+      <label>Nome completo <input name="name" required /></label>
+      <label>E-mail <input name="email" type="email" required /></label>
+      <label>Telefone <input name="phone" /></label>
+
+      <h2>Endereço de entrega</h2>
+      <label>Endereço <input name="addressLine1" required /></label>
+      <label>Complemento <input name="addressLine2" /></label>
+      <label>Cidade <input name="city" required /></label>
+      <label>Estado (UF) <input name="state" maxlength="2" required /></label>
+      <label>CEP <input name="postCode" required /></label>
+
+      <button type="submit" class="primary-button">Pagar com Mercado Pago</button>
+      <p id="checkout-error" class="error-message" hidden></p>
+    </form>
+  </section>
+
+</main>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
+<script src="/customizer.js"></script>
+<script src="/app.js"></script>
+</body>
+</html>
