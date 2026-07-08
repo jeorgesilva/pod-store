@@ -43,7 +43,11 @@ CREATE TABLE IF NOT EXISTS order_items (
   product_id         TEXT NOT NULL REFERENCES products(id),
   quantity           INTEGER NOT NULL DEFAULT 1,
   unit_price_cents   INTEGER NOT NULL,
-  artwork_url        TEXT NOT NULL,            -- public R2 url of the customer's finished design
+  artwork_url        TEXT,                     -- public R2 url of the artwork; set for 'ready' products
+                                                 -- (products.default_artwork_url), NULL for 'customizable'
+  pod_template_id    INTEGER,                  -- Printful Embedded Design Maker template id; set for
+                                                 -- 'customizable' products, NULL for 'ready'. Exactly one
+                                                 -- of artwork_url / pod_template_id is set, never both.
   customization_json TEXT                      -- raw Fabric.js canvas JSON, kept for reprints/support
 );
 

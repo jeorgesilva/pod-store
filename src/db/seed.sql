@@ -1,17 +1,24 @@
--- Catálogo inicial. productUid e custo de produção confirmados via API da
--- Gelato (product.gelatoapis.com) em 2026-07-07 para o Brasil (BRL).
--- Preço de venda = custo Gelato × 1.75 ÷ (1 − 0.0499), para que a margem
--- líquida (após a taxa do Checkout Pro do Mercado Pago, 4.99%) fique em
--- exatamente custo × 1.75. Não inclui frete, que é cobrado à parte.
+-- Catálogo inicial.
 --
--- print_width_mm / print_height_mm são estimativas do tamanho físico real
--- da área de impressão (mesmo nível de "placeholder" que os mockups em
--- SVG) — usadas só para calcular o DPI da imagem que o cliente sobe no
--- editor. Ajuste quando tiver as specs reais de cada produto.
+-- Produtos reais importados do catálogo da Printful (Catalog API,
+-- 2026-07-08). pod_product_uid é o variant_id numérico
+-- (GET /products/{id}, campo variants[].id); mockup_image_url é a foto
+-- real do produto (GET /products/{id}, variants[].image), baixada para
+-- public/mockups/*.jpg. base_price_cents = custo_producao (USD da
+-- Printful, convertido a BRL na cotação do dia, 1 USD = 5.16 BRL) × 1.75
+-- ÷ (1 − 0.0499) — fórmula da margem líquida após a taxa do Checkout Pro
+-- do Mercado Pago (ver CLAUDE.md).
 --
--- Todos abaixo são 'customizable' (cliente personaliza no editor). Ainda
--- não há nenhum produto 'ready' (arte fixa, sem editor) cadastrado —
--- default_artwork_url fica NULL até termos os arquivos de arte prontos.
+-- print_width_mm / print_height_mm e print_area_json continuam só para o
+-- customizer.js legado (fora do fluxo principal) — o Embedded Design
+-- Maker da Printful calcula a área de impressão sozinho. Reescalados
+-- proporcionalmente para o tamanho real das fotos (700×1000px), mas
+-- ainda são estimativas, não a área de impressão exata de cada variante.
+--
+-- Todos abaixo são 'customizable' (cliente personaliza no Embedded Design
+-- Maker da Printful). Ainda não há nenhum produto 'ready' (arte fixa, sem
+-- editor) cadastrado — default_artwork_url fica NULL até termos os
+-- arquivos de arte prontos.
 
 INSERT INTO products (id, name, description, base_price_cents, pod_product_uid, mockup_image_url, print_area_json, product_type, print_width_mm, print_height_mm, active)
 VALUES
@@ -19,10 +26,10 @@ VALUES
   'camiseta-basica-branca',
   'Camiseta básica branca personalizada',
   'Camiseta 100% algodão, estampa digital de alta qualidade.',
-  20548, -- custo Gelato: R$111,56 -> preço: R$205,48
-  'apparel_product_gca_t-shirt_gsc_crewneck_gcu_unisex_gqa_classic_gsi_m_gco_white_gpr_4-4',
-  '/mockups/camiseta-branca.svg',
-  '{"x":150,"y":120,"width":300,"height":360}',
+  11357, -- Bella+Canvas 3001 (White/M), custo USD 11.95 x 5.16 -> BRL, x1.75/(1-0.0499)
+  '4012', -- Printful variant_id: Bella+Canvas 3001 Unisex Staple T-Shirt, White / M
+  '/mockups/camiseta-branca.jpg',
+  '{"x":175,"y":200,"width":350,"height":600}',
   'customizable',
   300, 360,
   1
@@ -30,11 +37,11 @@ VALUES
 (
   'caneca-ceramica-branca',
   'Caneca de cerâmica personalizada',
-  'Caneca branca 325ml, estampa ao redor.',
-  8224, -- custo Gelato: R$44,65 -> preço: R$82,24
-  'mug_product_msz_11-oz_mmat_ceramic-white_cl_4-0',
-  '/mockups/caneca-branca.svg',
-  '{"x":90,"y":90,"width":420,"height":220}',
+  'Caneca branca 11oz (325ml), estampa ao redor.',
+  6178, -- White Glossy Mug 11oz, custo USD 6.50 x 5.16 -> BRL, x1.75/(1-0.0499)
+  '1320', -- Printful variant_id: White Glossy Mug, White / 11 oz
+  '/mockups/caneca-branca.jpg',
+  '{"x":105,"y":150,"width":490,"height":367}',
   'customizable',
   200, 95,
   1
@@ -42,43 +49,38 @@ VALUES
 (
   'poster-a3',
   'Pôster A3 personalizado',
-  'Pôster A3 retrato, papel couché 200g, acabamento fosco.',
-  12297, -- custo Gelato: R$66,76 -> preço: R$122,97
-  'flat_product_pf_a3_pt_200-gsm-coated-silk_cl_4-0_ct_none_prt_none_sft_none_set_none_ver',
-  '/mockups/poster-a3.svg',
-  '{"x":160,"y":70,"width":280,"height":460}',
+  'Pôster 30x40cm (próximo de A3), papel matte, acabamento fosco.',
+  11168, -- Enhanced Matte Paper Poster 30x40cm, custo USD 11.75 x 5.16 -> BRL, x1.75/(1-0.0499)
+  '8948', -- Printful variant_id: Enhanced Matte Paper Poster (cm), 30x40 cm
+  '/mockups/poster-a3.jpg',
+  '{"x":187,"y":117,"width":327,"height":767}',
   'customizable',
-  287, 410,
+  300, 400,
   1
 ),
 (
   'ecobag-branca',
   'Ecobag branca personalizada',
-  'Bolsa de algodão branca, alça reforçada, estampa frontal.',
-  15440, -- custo Gelato: R$83,82 -> preço: R$154,40
-  'bag_product_bsc_tote-bag_bqa_clc_bsi_std-t_bco_white_bpr_4-0',
-  '/mockups/ecobag-branca.svg',
-  '{"x":200,"y":230,"width":200,"height":200}',
+  'Bolsa de algodão branca (AS Colour 1001), alça reforçada, estampa frontal.',
+  16632, -- Cotton Tote Bag AS Colour 1001 (Cream/White), custo USD 17.50 x 5.16 -> BRL, x1.75/(1-0.0499)
+  '16289', -- Printful variant_id: Cotton Tote Bag AS Colour 1001, Cream (White) / One size
+  '/mockups/ecobag-branca.jpg',
+  '{"x":233,"y":383,"width":233,"height":333}',
   'customizable',
   250, 250,
   1
 );
-
--- Produtos abaixo: productUid e custo de produção confirmados via API da
--- Gelato (product.gelatoapis.com) em 2026-07-08 para o Brasil (BRL), mesma
--- fórmula de preço e mesmo caráter "placeholder" dos mockups/print_area_json
--- acima (ajustar quando tiver fotos reais e specs de impressão confirmadas).
 
 INSERT INTO products (id, name, description, base_price_cents, pod_product_uid, mockup_image_url, print_area_json, product_type, print_width_mm, print_height_mm, active)
 VALUES
 (
   'moletom-branco',
   'Moletom com capuz branco personalizado',
-  'Moletom unissex, algodão/poliéster, estampa digital frontal.',
-  35234, -- custo Gelato: R$191,29 -> preço: R$352,34
-  'apparel_product_gca_hoodie_gsc_pullover_gcu_unisex_gqa_classic_gsi_m_gco_white_gpr_4-4',
-  '/mockups/moletom-branco.svg',
-  '{"x":150,"y":140,"width":300,"height":340}',
+  'Moletom unissex Gildan 18500, algodão/poliéster, estampa digital frontal.',
+  21147, -- Gildan 18500 Unisex Heavy Blend Hoodie (White/M), custo USD 22.25 x 5.16 -> BRL, x1.75/(1-0.0499)
+  '5523', -- Printful variant_id: Gildan 18500 Unisex Heavy Blend Hooded Sweatshirt, White / M
+  '/mockups/moletom-branco.jpg',
+  '{"x":175,"y":233,"width":350,"height":567}',
   'customizable',
   300, 360,
   1
@@ -86,11 +88,11 @@ VALUES
 (
   'quadro-tela-30x40',
   'Quadro em tela 30x40cm personalizado',
-  'Impressão em tela, moldura de madeira FSC 2cm, acabamento fosco.',
-  19958, -- custo Gelato: R$108,35 -> preço: R$199,58
-  'canvas_product_cf_300x400-mm_cm_canvas_cfrm_wood-fsc-2-cm_cl_4-0_ver',
-  '/mockups/quadro-tela-30x40.svg',
-  '{"x":150,"y":70,"width":300,"height":400}',
+  'Impressão em tela (canvas) 12"x16" (~30x40cm), acabamento fosco.',
+  23713, -- Canvas 12"x16", custo USD 24.95 x 5.16 -> BRL, x1.75/(1-0.0499)
+  '5', -- Printful variant_id: Canvas 12"x16"
+  '/mockups/quadro-tela-30x40.jpg',
+  '{"x":175,"y":117,"width":350,"height":667}',
   'customizable',
   300, 400,
   1
@@ -98,11 +100,11 @@ VALUES
 (
   'garrafa-termica-inox',
   'Garrafa térmica de inox personalizada',
-  'Garrafa inox 500ml, parede dupla, estampa ao redor.',
-  22447, -- custo Gelato: R$121,87 -> preço: R$224,47
-  'bottle_product_bsz_17-oz_bmat_stainless-steel-white_cl_4-0',
-  '/mockups/garrafa-termica-inox.svg',
-  '{"x":220,"y":230,"width":160,"height":140}',
+  'Garrafa inox 17oz (500ml), parede dupla, estampa ao redor.',
+  18771, -- Stainless Steel Water Bottle 17oz (White), custo USD 19.75 x 5.16 -> BRL, x1.75/(1-0.0499)
+  '10798', -- Printful variant_id: Stainless Steel Water Bottle 17 oz, White
+  '/mockups/garrafa-termica-inox.jpg',
+  '{"x":257,"y":383,"width":187,"height":233}',
   'customizable',
   180, 90,
   1
@@ -110,11 +112,11 @@ VALUES
 (
   'bone-branco',
   'Boné aba curva branco personalizado',
-  'Boné dad hat, estampa digital frontal (DTF).',
-  18954, -- custo Gelato: R$102,91 -> preço: R$189,54
-  'apparel_product_gca_hat_gsc_dad-hat_gcu_unisex_gqa_classic_gsi_onesize_gco_white_gpr_4-0-dtf_as-colour_1114',
-  '/mockups/bone-branco.svg',
-  '{"x":230,"y":260,"width":140,"height":100}',
+  'Boné dad hat Yupoong 6245CM, estampa digital frontal (DTF).',
+  14969, -- Yupoong 6245CM Dad Cap (White), custo USD 15.75 x 5.16 -> BRL, x1.75/(1-0.0499)
+  '7853', -- Printful variant_id: Yupoong Unstructured Classic Dad Cap 6245CM, White / One size
+  '/mockups/bone-branco.jpg',
+  '{"x":268,"y":433,"width":163,"height":167}',
   'customizable',
   100, 70,
   1

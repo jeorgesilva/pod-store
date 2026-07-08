@@ -1,6 +1,7 @@
 import { Hono } from "hono";
 import { checkoutRoute } from "./routes/checkout";
 import { ordersRoute } from "./routes/orders";
+import { printfulRoute } from "./routes/printful";
 import { productsRoute } from "./routes/products";
 import { webhooksRoute } from "./routes/webhooks";
 import type { Env } from "./types";
@@ -11,6 +12,7 @@ app.route("/api/products", productsRoute);
 app.route("/api/checkout", checkoutRoute);
 app.route("/api/orders", ordersRoute);
 app.route("/api/webhooks", webhooksRoute);
+app.route("/api/printful", printfulRoute);
 
 // Anything that isn't /api/* falls through to the static files in /public
 // (the [assets] binding in wrangler.toml). This is what makes one Worker

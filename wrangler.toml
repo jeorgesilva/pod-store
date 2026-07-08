@@ -21,6 +21,6 @@ bucket_name = "pod-store-artwork"
 # Non-secret configuration. Real secrets (API keys/tokens) must NOT go here —
 # set them with `wrangler secret put <NAME>` instead. See README.md.
 [vars]
-POD_PROVIDER = "gelato"           # "gelato" or "montink"
+POD_PROVIDER = "printful"         # "printful" (active) — "gelato"/"montink" kept only as historical adapters
 STORE_CURRENCY = "BRL"
 PUBLIC_ARTWORK_BASE_URL = "https://pub-1f1fed2e33dc4b17881c2a545e7f490c.r2.dev"

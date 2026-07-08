@@ -2,7 +2,9 @@
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="description" content="Produtos personalizados: escolha uma peça, personalize online e a gente cuida da produção e do envio." />
+<meta name="theme-color" content="#f7f6f2" />
 <title>Loja personalizada</title>
 <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -22,53 +24,59 @@
 
   <!-- CATALOG ------------------------------------------------------ -->
   <section id="view-catalog" class="view">
-    <div class="view-intro">
+    <div class="hero">
       <p class="eyebrow">Produtos personalizados</p>
       <h1>Escolha uma peça e faça do seu jeito</h1>
+      <p class="hero-sub">Personalize online — a gente cuida da produção e do envio.</p>
+      <a href="#catalogo" class="hero-cta">Ver catálogo &darr;</a>
+    </div>
+
+    <section class="featured" aria-labelledby="featured-heading">
+      <div class="section-heading">
+        <h2 id="featured-heading">Destaques</h2>
+        <div class="carousel-controls">
+          <button type="button" class="carousel-arrow" data-carousel-prev aria-label="Destaque anterior">&larr;</button>
+          <button type="button" class="carousel-arrow" data-carousel-next aria-label="Próximo destaque">&rarr;</button>
+        </div>
+      </div>
+      <div id="featured-carousel" class="carousel" aria-live="polite"></div>
+    </section>
+
+    <div id="catalogo" class="view-intro">
+      <p class="eyebrow">Catálogo completo</p>
     </div>
     <div id="product-grid" class="product-grid" aria-live="polite">
-      <p class="loading">Carregando produtos…</p>
+      <div class="skeleton-card" aria-hidden="true"></div>
+      <div class="skeleton-card" aria-hidden="true"></div>
+      <div class="skeleton-card" aria-hidden="true"></div>
+      <div class="skeleton-card" aria-hidden="true"></div>
     </div>
   </section>
 
-  <!-- CUSTOMIZER ----------------------------------------------------- -->
+  <!-- CUSTOMIZER (Printful Embedded Design Maker) --------------------- -->
   <section id="view-customize" class="view" hidden>
     <button class="back-link" data-action="back-to-catalog" type="button">&larr; Voltar ao catálogo</button>
 
     <div class="customize-layout">
       <div class="canvas-frame">
-        <canvas id="fabric-canvas"></canvas>
+        <div id="printful-designer" class="printful-designer"></div>
       </div>
 
       <div class="customize-panel">
         <h2 id="customize-product-name">&nbsp;</h2>
         <p id="customize-product-price" class="price"></p>
 
-        <div class="tool-group">
-          <label class="tool-button" for="upload-image">
-            Enviar foto
-            <input id="upload-image" type="file" accept="image/*" hidden />
-          </label>
-          <button class="tool-button" data-action="add-text" type="button">Adicionar texto</button>
-          <button class="tool-button" data-action="remove-selected" type="button">Remover selecionado</button>
-        </div>
+        <p class="hint">Personalize à vontade no editor ao lado. Use o botão de salvar
+          dentro do próprio editor quando terminar o design.</p>
 
-        <div class="tool-group tool-group--inline">
-          <label for="text-color">Cor do texto</label>
-          <input id="text-color" type="color" value="#1b1d1b" />
-        </div>
-
-        <p class="hint">Arraste, redimensione e gire livremente. Só o que estiver dentro da área
-          tracejada é enviado para impressão.</p>
-
-        <p id="quality-warning" class="error-message" hidden></p>
+        <p id="design-status" class="hint"></p>
 
         <label class="tool-group tool-group--inline">
           Quantidade
           <input id="quantity-input" type="number" min="1" value="1" />
         </label>
 
-        <button id="add-to-cart-button" class="primary-button" type="button">Adicionar ao carrinho</button>
+        <button id="add-to-cart-button" class="primary-button" type="button" disabled>Adicionar ao carrinho</button>
       </div>
     </div>
   </section>
@@ -126,8 +134,15 @@
 
 </main>
 
+<!-- Fabric.js customizer is no longer in the main flow — 'customizable'
+     products now use the Printful Embedded Design Maker below. Kept out
+     of the main flow, not deleted, per CLAUDE.md.
 <script src="https://cdnjs.cloudflare.com/ajax/libs/fabric.js/5.3.0/fabric.min.js"></script>
 <script src="/customizer.js"></script>
-<script src="/app.js"></script>
+-->
+<!-- embed.js (Printful EDM SDK) is loaded on demand from app.js, only when
+     a customer actually opens the editor — no reason to ship it on every
+     page load when most visits never reach the customizer. -->
+<script src="/app.js" defer></script>
 </body>
 </html>

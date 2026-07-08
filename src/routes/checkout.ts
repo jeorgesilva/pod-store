@@ -1,6 +1,6 @@
 import { Hono } from "hono";
-import { saveArtworkToR2 } from "../lib/artwork";
 import { createPreference } from "../lib/mercadopago";
+import { verifyPrintfulTemplate } from "../lib/pod/printful";
 import type { CheckoutRequestBody, Env, Product } from "../types";
 
 export const checkoutRoute = new Hono<{ Bindings: Env }>();
@@ -9,8 +9,10 @@ export const checkoutRoute = new Hono<{ Bindings: Env }>();
 // Body: CheckoutRequestBody (see src/types.ts)
 // 1) validate products + compute total from OUR OWN prices (never trust
 //    a price sent by the browser)
-// 2) create the order + order_items rows (status: pending_payment)
-// 3) upload each item's finished artwork to R2
+// 2) validate each 'customizable' item's design reference server-side too
+//    (never trust a Printful template id sent by the browser, same trust
+//    boundary as price and as 'ready' products' default_artwork_url)
+// 3) create the order + order_items rows (status: pending_payment)
 // 4) create a Mercado Pago preference and return the checkout URL
 checkoutRoute.post("/", async (c) => {
   const body = await c.req.json<CheckoutRequestBody>();
@@ -22,7 +24,7 @@ checkoutRoute.post("/", async (c) => {
   const orderId = crypto.randomUUID();
 
   // Look up every product referenced by the cart in one query, then price
-  // server-side — the client only ever sends productId + quantity + art.
+  // server-side — the client only ever sends productId + quantity + design.
   const productIds = [...new Set(body.items.map((i) => i.productId))];
   const placeholders = productIds.map(() => "?").join(",");
   const { results: products } = await c.env.DB.prepare(
@@ -41,10 +43,9 @@ checkoutRoute.post("/", async (c) => {
     unitPriceCents: number;
     customization: unknown;
     title: string;
-    // Either a fresh canvas export to upload (customizable) or an
-    // already-stable URL to reuse as-is (ready) — never both.
-    artworkDataUrlToUpload: string | null;
+    // Exactly one of the two is set, depending on product_type — never both.
     artworkUrl: string | null;
+    podTemplateId: number | null;
   }[] = [];
 
   for (const item of body.items) {
@@ -53,20 +54,27 @@ checkoutRoute.post("/", async (c) => {
       return c.json({ error: "invalid_product", productId: item.productId }, 400);
     }
 
-    // Artwork source depends on the product type — never trust the client
-    // for a 'ready' product's art, same trust boundary as price.
-    let artworkDataUrlToUpload: string | null = null;
     let artworkUrl: string | null = null;
+    let podTemplateId: number | null = null;
     if (product.product_type === "ready") {
+      // Never trust the client for a 'ready' product's art, same trust
+      // boundary as price.
       if (!product.default_artwork_url) {
         return c.json({ error: "product_missing_artwork", productId: item.productId }, 500);
       }
       artworkUrl = product.default_artwork_url;
     } else {
-      if (!item.artworkDataUrl) {
-        return c.json({ error: "missing_artwork", productId: item.productId }, 400);
+      if (typeof item.printfulTemplateId !== "number") {
+        return c.json({ error: "missing_design", productId: item.productId }, 400);
       }
-      artworkDataUrlToUpload = item.artworkDataUrl;
+      // Confirm this template id actually belongs to our Printful account
+      // before it's used to create a paid order — never trust it blindly
+      // just because the client's EDM session returned it.
+      const isOwnTemplate = await verifyPrintfulTemplate(c.env, item.printfulTemplateId);
+      if (!isOwnTemplate) {
+        return c.json({ error: "invalid_design", productId: item.productId }, 400);
+      }
+      podTemplateId = item.printfulTemplateId;
     }
 
     totalCents += product.base_price_cents * item.quantity;
@@ -77,21 +85,10 @@ checkoutRoute.post("/", async (c) => {
       unitPriceCents: product.base_price_cents,
       customization: item.customization ?? null,
       title: product.name,
-      artworkDataUrlToUpload,
       artworkUrl,
+      podTemplateId,
     });
   }
-
-  // Upload only the items that actually need a fresh file in R2; 'ready'
-  // items already point at a stable URL.
-  const itemsWithArtworkUrl = await Promise.all(
-    preparedItems.map(async (item) => ({
-      ...item,
-      artworkUrl:
-        item.artworkUrl ??
-        (await saveArtworkToR2(c.env, orderId, item.id, item.artworkDataUrlToUpload as string)),
-    }))
-  );
 
   await c.env.DB.batch([
     c.env.DB.prepare(
@@ -106,11 +103,11 @@ checkoutRoute.post("/", async (c) => {
       JSON.stringify(body.shippingAddress),
       totalCents
     ),
-    ...itemsWithArtworkUrl.map((item) =>
+    ...preparedItems.map((item) =>
       c.env.DB.prepare(
         `INSERT INTO order_items
-          (id, order_id, product_id, quantity, unit_price_cents, artwork_url, customization_json)
-         VALUES (?, ?, ?, ?, ?, ?, ?)`
+          (id, order_id, product_id, quantity, unit_price_cents, artwork_url, pod_template_id, customization_json)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?)`
       ).bind(
         item.id,
         orderId,
@@ -118,6 +115,7 @@ checkoutRoute.post("/", async (c) => {
         item.quantity,
         item.unitPriceCents,
         item.artworkUrl,
+        item.podTemplateId,
         JSON.stringify(item.customization)
       )
     ),
@@ -126,7 +124,7 @@ checkoutRoute.post("/", async (c) => {
   const origin = new URL(c.req.url).origin;
   const preference = await createPreference(c.env.MERCADOPAGO_ACCESS_TOKEN, {
     orderId,
-    items: itemsWithArtworkUrl.map((i) => ({
+    items: preparedItems.map((i) => ({
       title: i.title,
       quantity: i.quantity,
       unitPriceCents: i.unitPriceCents,

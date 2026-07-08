@@ -72,12 +72,12 @@ h2 { font-size: 1.05rem; }
 }
 
 main {
-  max-width: 1040px;
+  max-width: 1120px;
   margin: 0 auto;
   padding: clamp(20px, 5vw, 56px);
 }
 
-.view-intro { margin-bottom: 32px; max-width: 46ch; }
+.view-intro { margin-bottom: 20px; max-width: 46ch; }
 
 .eyebrow {
   text-transform: uppercase;
@@ -85,6 +85,84 @@ main {
   font-size: 0.78rem;
   color: var(--ink-soft);
   margin: 0 0 8px;
+}
+
+/* ---------- hero ---------- */
+.hero {
+  max-width: 56ch;
+  margin: 0 0 clamp(36px, 6vw, 56px);
+}
+
+.hero-sub {
+  color: var(--ink-soft);
+  font-size: clamp(0.95rem, 1.5vw, 1.05rem);
+  margin: 0 0 20px;
+}
+
+.hero-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  text-decoration: none;
+  font-weight: 600;
+  border-radius: 999px;
+  padding: 12px 22px;
+  /* min tap target for mobile, per WCAG/mobile UX guidance */
+  min-height: 44px;
+}
+
+.hero-cta:hover { opacity: 0.92; }
+
+/* ---------- featured carousel ---------- */
+.featured { margin-bottom: clamp(36px, 6vw, 56px); }
+
+.section-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
+
+.section-heading h2 { margin: 0; }
+
+.carousel-controls { display: flex; gap: 8px; }
+
+.carousel-arrow {
+  width: 44px;
+  height: 44px;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--ink);
+  font-size: 1.1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.carousel-arrow:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Pure-CSS scroll-snap carousel — no JS carousel library. Works via touch
+   swipe on mobile out of the box; the prev/next buttons above are a
+   pointer/keyboard-friendly enhancement on top (scrollBy in app.js). */
+.carousel {
+  display: flex;
+  gap: 16px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  padding-bottom: 4px;
+  scrollbar-width: none; /* Firefox/Chrome 121+; Safari falls back to ::-webkit-scrollbar below */
+}
+
+.carousel::-webkit-scrollbar { display: none; }
+
+.carousel-card {
+  flex: 0 0 auto;
+  width: 220px;
+  scroll-snap-align: start;
 }
 
 /* ---------- product grid ---------- */
@@ -133,6 +211,35 @@ main {
 
 .product-card .price { color: var(--ink-soft); font-size: 0.92rem; margin: 0; }
 
+/* Skeleton loading state, shown in #product-grid while /api/products is
+   in flight — avoids an empty/blank grid and the layout jump that comes
+   with it (helps CLS). Shimmer animates `transform` only (compositor-only,
+   no paint/layout work) rather than `background-position`. */
+.skeleton-card {
+  position: relative;
+  aspect-ratio: 1;
+  border-radius: var(--radius);
+  background: var(--surface);
+  overflow: hidden;
+}
+
+.skeleton-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(100deg, transparent 30%, var(--bg) 50%, transparent 70%);
+  transform: translateX(-100%);
+  animation: skeleton-shimmer 1.4s ease-in-out infinite;
+}
+
+@keyframes skeleton-shimmer {
+  to { transform: translateX(100%); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .skeleton-card { animation: none; }
+}
+
 /* ---------- customizer ---------- */
 .back-link {
   background: none;
@@ -157,6 +264,13 @@ main {
   padding: 20px;
   display: flex;
   justify-content: center;
+}
+
+/* Printful Embedded Design Maker mounts its iframe inside this element —
+   unlike the old Fabric.js canvas, it needs an explicit size up front. */
+.printful-designer {
+  width: 100%;
+  min-height: 640px;
 }
 
 .customize-panel { position: sticky; top: 20px; }
@@ -281,4 +395,13 @@ input[type="color"] {
 @media (max-width: 720px) {
   .customize-layout { grid-template-columns: 1fr; }
   .customize-panel { position: static; }
+  .carousel-card { width: 168px; }
+}
+
+/* Notched/rounded-corner phones — keep the sticky header off the status
+   bar/camera cutout area. */
+.site-header {
+  padding-top: max(20px, env(safe-area-inset-top));
+  padding-left: max(clamp(20px, 5vw, 56px), env(safe-area-inset-left));
+  padding-right: max(clamp(20px, 5vw, 56px), env(safe-area-inset-right));
 }

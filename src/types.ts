@@ -4,11 +4,17 @@ export interface Env {
   ASSETS: Fetcher;
 
   // vars (wrangler.toml [vars])
-  POD_PROVIDER: "gelato" | "montink";
+  POD_PROVIDER: "printful" | "gelato" | "montink";
   STORE_CURRENCY: string;
   PUBLIC_ARTWORK_BASE_URL: string;
 
   // secrets (set with `wrangler secret put NAME`, never in wrangler.toml)
+  PRINTFUL_API_KEY: string;
+  /** Private token with the "Embedded Designer" extension — separate from
+   *  PRINTFUL_API_KEY, used only to mint EDM nonces. See README.md. */
+  PRINTFUL_EDM_TOKEN: string;
+  // Historical — Gelato/Montink are no longer the active provider (see
+  // CLAUDE.md), kept only so their adapters keep compiling.
   GELATO_API_KEY: string;
   MONTINK_API_KEY: string;
   MERCADOPAGO_ACCESS_TOKEN: string;
@@ -36,11 +42,20 @@ export interface CartItemInput {
   quantity: number;
   /**
    * Data URL (data:image/png;base64,...) exported from the Fabric.js canvas.
-   * Required for 'customizable' products; ignored for 'ready' products —
-   * those always ship with the product's own default_artwork_url, never
-   * whatever the client sends (same trust boundary as price).
+   * Legacy — the Fabric.js customizer is no longer wired into the main
+   * flow (see public/customizer.js), kept only so it still typechecks if
+   * ever re-enabled. Ignored by checkout.ts.
    */
   artworkDataUrl?: string;
+  /**
+   * Printful Embedded Design Maker template id, returned by the
+   * onTemplateSaved callback once the customer finishes designing.
+   * Required for 'customizable' products; ignored for 'ready' products —
+   * those always ship with the product's own default_artwork_url, never
+   * whatever the client sends (same trust boundary as price). Verified
+   * server-side against Printful before use — see checkout.ts.
+   */
+  printfulTemplateId?: number;
   /** Raw Fabric.js canvas.toJSON(), kept for reprints/support, optional */
   customization?: unknown;
 }

@@ -10,8 +10,18 @@ export interface PodOrderItem {
   itemReferenceId: string;
   /** The provider's product identifier (products.pod_product_uid) */
   productUid: string;
-  /** Public URL of the finished, print-ready artwork (from R2) */
-  artworkUrl: string;
+  /**
+   * Public URL of the finished, print-ready artwork (from R2). Used for
+   * 'ready' products (products.default_artwork_url). Mutually exclusive
+   * with printfulTemplateId — a given item has exactly one of the two.
+   */
+  artworkUrl?: string;
+  /**
+   * Printful Embedded Design Maker template id (order_items.pod_template_id),
+   * for 'customizable' products designed in the EDM iframe instead of
+   * uploaded as a flat file. Printful-specific — other providers ignore it.
+   */
+  printfulTemplateId?: number;
   quantity: number;
 }
 

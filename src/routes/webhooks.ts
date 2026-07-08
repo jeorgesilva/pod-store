@@ -1,8 +1,8 @@
 import { Hono } from "hono";
 import { getPayment, verifyWebhookSignature } from "../lib/mercadopago";
 import { getPodProvider } from "../lib/pod";
+import type { PrintfulWebhookPayload } from "../lib/pod/printful";
 import type { Env } from "../types";
-import type { GelatoWebhookPayload } from "../lib/pod/gelato";
 
 export const webhooksRoute = new Hono<{ Bindings: Env }>();
 
@@ -64,30 +64,58 @@ webhooksRoute.post("/mercadopago", async (c) => {
 });
 
 // POST /api/webhooks/pod
-// Point this at Gelato's webhook config (Dashboard -> Developers ->
-// Webhooks) for order status events. If you switch to Montink, adapt the
-// payload parsing below to whatever shape their webhook actually sends —
-// the `orders` table update logic stays the same either way.
+// Point this at a webhook registered via Printful's `POST /webhooks` API
+// (see README.md for the exact call — Printful's API-only "manual order"
+// stores don't have a dashboard webhook UI) for these event types:
+// order_created, order_updated, order_failed, order_canceled,
+// package_shipped. Confirmed against the official docs, not guessed:
+// https://developers.printful.com/docs/#tag/Webhook-management-API
 webhooksRoute.post("/pod", async (c) => {
-  const payload = await c.req.json<GelatoWebhookPayload>();
-  const orderId = payload.orderReferenceId; // this is OUR order id, set at createOrder time
-
-  if (!orderId) {
+  const payload = await c.req.json<PrintfulWebhookPayload>();
+  // Order-status events carry the order at data.order; package_shipped
+  // carries it there too, alongside data.shipment for tracking info.
+  const order = payload.data.order;
+  if (!order?.external_id) {
     return c.json({ error: "missing_order_reference" }, 400);
   }
+  const orderId = order.external_id; // this is OUR order id, set at createOrder time
 
-  const statusMap: Record<string, string> = {
-    printed: "in_production",
-    shipped: "shipped",
-    delivered: "delivered",
-    cancelled: "cancelled",
-  };
-  const mappedStatus = statusMap[payload.fulfillmentStatus] ?? "in_production";
+  // Printful's order.status enum (draft/inreview/pending/failed/canceled/
+  // onhold/inprocess/partial/fulfilled) has no "shipped" or "delivered"
+  // value — those come from separate events instead. Printful also has no
+  // delivery-confirmation webhook at all, so 'delivered' is never reached
+  // automatically; it stays at 'shipped' until updated manually.
+  let mappedStatus: string;
+  let podLastStatus: string;
+  if (payload.type === "package_shipped") {
+    mappedStatus = "shipped";
+    podLastStatus = "package_shipped";
+  } else if (payload.type === "order_canceled") {
+    mappedStatus = "cancelled";
+    podLastStatus = "order_canceled";
+  } else if (order.status === "fulfilled") {
+    mappedStatus = "shipped";
+    podLastStatus = order.status;
+  } else {
+    // draft/inreview/pending/onhold/inprocess/partial/failed and anything
+    // else all mean "still with Printful, not shipped yet".
+    mappedStatus = "in_production";
+    podLastStatus = order.status;
+  }
+
+  const trackingUrl = payload.data.shipment?.tracking_url;
 
   await c.env.DB.prepare(
-    "UPDATE orders SET status = ?, pod_last_status = ?, updated_at = datetime('now') WHERE id = ?"
+    `UPDATE orders
+       SET status = ?, pod_last_status = ?, updated_at = datetime('now')
+           ${trackingUrl ? ", tracking_url = ?" : ""}
+     WHERE id = ?`
   )
-    .bind(mappedStatus, payload.fulfillmentStatus, orderId)
+    .bind(
+      ...(trackingUrl
+        ? [mappedStatus, podLastStatus, trackingUrl, orderId]
+        : [mappedStatus, podLastStatus, orderId])
+    )
     .run();
 
   return c.body(null, 200);
@@ -106,12 +134,18 @@ async function submitOrderToPod(env: Env, orderId: string) {
   if (!order) throw new Error(`submitOrderToPod: order ${orderId} not found`);
 
   const { results: items } = await env.DB.prepare(
-    `SELECT oi.id, oi.quantity, oi.artwork_url, p.pod_product_uid
+    `SELECT oi.id, oi.quantity, oi.artwork_url, oi.pod_template_id, p.pod_product_uid
      FROM order_items oi JOIN products p ON p.id = oi.product_id
      WHERE oi.order_id = ?`
   )
     .bind(orderId)
-    .all<{ id: string; quantity: number; artwork_url: string; pod_product_uid: string }>();
+    .all<{
+      id: string;
+      quantity: number;
+      artwork_url: string | null;
+      pod_template_id: number | null;
+      pod_product_uid: string;
+    }>();
 
   const shipping = JSON.parse(order.shipping_address_json) as {
     addressLine1: string;
@@ -131,7 +165,8 @@ async function submitOrderToPod(env: Env, orderId: string) {
     items: items.map((item) => ({
       itemReferenceId: item.id,
       productUid: item.pod_product_uid,
-      artworkUrl: item.artwork_url,
+      artworkUrl: item.artwork_url ?? undefined,
+      printfulTemplateId: item.pod_template_id ?? undefined,
       quantity: item.quantity,
     })),
     shippingAddress: {
