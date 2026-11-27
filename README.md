@@ -1,175 +1,237 @@
-# pod-store — esqueleto Cloudflare + Mercado Pago + Printful
+> **Context note:** this project demonstrates hands-on experience with
+> Cloudflare Workers, the D1 database, webhook integrations and
+> production-ready checkout logic — skills that apply directly to building
+> tracking infrastructure and data automation.
 
-Esqueleto funcional de uma loja de produtos personalizados: catálogo, editor
-de personalização (Printful Embedded Design Maker), checkout com Mercado
-Pago e criação automática do pedido de produção na Printful. Roda inteiro
-como um único Cloudflare Worker (API + arquivos estáticos), com D1 (banco).
+# pod-store
 
-## O que já funciona
+A print-on-demand storefront that runs as a single Cloudflare Worker:
+product catalog, an embedded product designer (Printful Embedded Design
+Maker), checkout with Mercado Pago, and automatic creation of the
+production order at Printful once the payment is confirmed.
 
-- `GET /api/products`, `GET /api/products/:id` — catálogo lido do D1
-- Editor de personalização com o **Embedded Design Maker (EDM) da
-  Printful**, em iframe: `POST /api/printful/edm-nonce` gera um nonce no
-  backend (nunca expõe o token da Printful pro navegador) e o frontend abre
-  o editor oficial da Printful — upload de imagem, texto, posicionamento,
-  variantes (cor/tamanho), tudo dentro do iframe. Ao salvar, a Printful
-  retorna um `templateId`, que é o que efetivamente vai pro pedido — nunca
-  um arquivo exportado no navegador.
-- `POST /api/checkout` — valida produtos e preço no servidor (nunca confia
-  no preço vindo do navegador), valida o `templateId` do EDM contra a conta
-  Printful (nunca confia numa referência de design vinda do cliente sem
-  checar), grava o pedido no D1, cria a preferência de pagamento no Mercado
-  Pago (Checkout Pro) e devolve a URL de pagamento.
-- `POST /api/webhooks/mercadopago` — confirma o pagamento (com verificação
-  de assinatura), marca o pedido como pago e dispara a criação do pedido
-  na Printful.
-- `POST /api/webhooks/pod` — recebe atualização de status da Printful
-  (`order_created`/`order_updated`/`order_failed`/`order_canceled`/
-  `package_shipped`) e atualiza o pedido no D1.
-- Adaptador **Printful** completo (`src/lib/pod/printful.ts`), seguindo a
-  documentação oficial da Orders API (v1) e do Embedded Design Maker.
-- Interface comum (`src/lib/pod/types.ts`) — os adaptadores **Gelato** e
-  **Montink** (fornecedor anterior e um rascunho nunca usado) continuam no
-  repo, fora de uso, só como referência. Ver "Decisões já tomadas" no
-  `CLAUDE.md` antes de reconsiderar qualquer um dos dois.
+**Stack:** Cloudflare Workers · Hono · D1 (SQLite) · TypeScript · vanilla JS
+frontend (no build step) · Printful API · Mercado Pago API
 
-## O que está incompleto de propósito
+## Architecture
 
-- **Catálogo** (`src/db/seed.sql`): os 8 produtos usam `variant_id` reais
-  do catálogo da Printful e `base_price_cents` calculado em cima do custo
-  real (USD convertido a BRL na cotação do dia da importação, 2026-07-08)
-  — reconferir/recalcular se for adicionar produto novo ou se a cotação
-  do dólar tiver mudado muito.
-- **Editor Fabric.js** (`public/customizer.js`) fica no repo mas fora do
-  fluxo principal — não é mais chamado de `index.html`/`app.js`. O editor
-  ativo agora é o Embedded Design Maker da Printful.
-- **Checkout Pro do Mercado Pago** (redireciona o cliente pro ambiente do
-  Mercado Pago) em vez do Checkout Transparente — é o caminho mais simples
-  e seguro pra começar. Se quiser manter o cliente 100% no seu site depois,
-  dá pra migrar `src/lib/mercadopago.ts` pro fluxo transparente.
-- **Design visual**: layout limpo e funcional, mas genérico de propósito —
-  troque as cores em `public/style.css` (`:root`) pela identidade real da
-  sua marca. Os mockups em `public/mockups/` já são fotos reais dos
-  produtos (baixadas do catálogo da Printful).
-- Sem autenticação de admin, sem painel pra cadastrar produtos pela UI
-  (cadastre direto no D1 por enquanto — veja `src/db/seed.sql`).
-- Sem mapeamento de "entregue" (`delivered`): a Printful não manda um
-  webhook de confirmação de entrega, só de despacho (`package_shipped`) —
-  ver "Pendências" abaixo.
+```
+Browser  (public/: index.html + app.js — vanilla JS, no build step)
+   │
+   ▼
+Cloudflare Worker  (one deploy serves both the storefront and the API)
+   ├── Static assets (public/) .............. HTML, CSS, JS, product photos
+   └── Hono router (src/index.ts) → /api/*
+       ├── GET  /api/products ............... D1
+       ├── POST /api/printful/edm-nonce ..... D1 → Printful (EDM nonce)
+       ├── POST /api/checkout ............... D1 (prices)
+       │                                      → Printful (verify design)
+       │                                      → D1 (save order)
+       │                                      → Mercado Pago (payment link)
+       ├── GET  /api/orders/:id ............. D1
+       ├── POST /api/webhooks/mercadopago ◄── Mercado Pago (payment status)
+       │     verify signature → D1 'paid' → Printful (create production order)
+       └── POST /api/webhooks/pod ◄────────── Printful (order/shipping status)
+             map status → D1 (status, tracking URL)
 
-## Configurar
+Storage: D1 (products, orders, order_items) · R2 bucket bound but unused today
+```
+
+**Order lifecycle** (`orders.status`): `pending_payment → paid →
+submitted_to_pod → in_production → shipped`, or `payment_failed` /
+`cancelled`.
+
+**How the webhooks find the order:** our own `orders.id` is sent to Mercado
+Pago as `external_reference` and to Printful as `external_id`. Both
+webhooks carry it back, so no mapping table is needed.
+
+### Key files
+
+| File | What it does |
+|---|---|
+| [src/index.ts](src/index.ts) | Mounts the API routes; anything else falls through to the static assets |
+| [src/routes/checkout.ts](src/routes/checkout.ts) | Server-side pricing, design verification, order creation, payment link |
+| [src/routes/webhooks.ts](src/routes/webhooks.ts) | Mercado Pago payment webhook and Printful status webhook |
+| [src/lib/mercadopago.ts](src/lib/mercadopago.ts) | Checkout Pro preference and webhook signature (HMAC-SHA256) verification |
+| [src/routes/printful.ts](src/routes/printful.ts) | Mints the designer nonce server-side, so the Printful token never reaches the browser |
+| [src/lib/pod/printful.ts](src/lib/pod/printful.ts) | Printful Orders API adapter behind a provider-agnostic interface |
+| [src/db/schema.sql](src/db/schema.sql) | D1 schema: `products`, `orders`, `order_items` |
+
+## What works
+
+- **Catalog:** `GET /api/products` and `GET /api/products/:id`, read from D1.
+- **Product designer:** the Printful Embedded Design Maker (EDM), in an
+  iframe. `POST /api/printful/edm-nonce` mints a short-lived nonce on the
+  backend, so the Printful token never reaches the browser. The customer
+  uploads images, adds text and picks variants (color/size) inside
+  Printful's editor. On save, Printful returns a `templateId`, and that
+  reference, not a file exported in the browser, is what goes into the
+  order.
+- **`POST /api/checkout`:**
+  - recomputes the total from the prices stored in D1 (never trusts a
+    price sent by the browser);
+  - verifies that each `templateId` belongs to our Printful account (never
+    trusts a design reference sent by the browser);
+  - saves the order in D1, creates a Mercado Pago Checkout Pro preference
+    and returns the payment URL.
+- **`POST /api/webhooks/mercadopago`:** verifies the request signature,
+  fetches the payment from Mercado Pago, marks the order as paid and
+  creates the production order at Printful.
+- **`POST /api/webhooks/pod`:** receives Printful status events
+  (`order_created`, `order_updated`, `order_failed`, `order_canceled`,
+  `package_shipped`) and updates the order in D1, including the tracking
+  URL.
+- **Provider-agnostic POD interface** ([src/lib/pod/types.ts](src/lib/pod/types.ts)),
+  with Printful as the active adapter, implemented against the official
+  Orders API (v1) and Embedded Design Maker docs.
+
+**Tested so far:** `npm run typecheck`, plus the catalog, product routes and
+static files under local `wrangler dev` (before the Printful migration).
+The calls to the live Printful and Mercado Pago APIs have not been
+exercised yet: they need real credentials and manual dashboard setup (see
+[Before going live](#before-going-live)).
+
+## Known limitations
+
+- **No order confirmation page yet.** Mercado Pago's `back_urls` send the
+  customer to `/pedido/:id`, which has no route or page, so the customer
+  lands on a 404 after paying. `GET /api/orders/:id` already exists to back
+  that page.
+- **An order can get stuck at `paid`.** The payment webhook sets the order
+  to `paid` *before* calling Printful. If that call fails, Mercado Pago
+  retries the webhook, but the retry is skipped because the order is no
+  longer `pending_payment`, so it never reaches Printful. Needs a retry or
+  reconciliation step.
+- **The Printful webhook doesn't authenticate its sender.** Anyone who
+  knows the URL could change an order's status. Possible fixes: a secret
+  token in the registered webhook URL, or re-fetching the order from the
+  Printful API before applying the update.
+- **`delivered` is never reached automatically.** Printful sends
+  `package_shipped` (with tracking) but no delivery confirmation, so orders
+  stay at `shipped`.
+- **The cart lives in memory**, so it's lost on page reload.
+
+## Deliberate simplifications
+
+- **Mercado Pago Checkout Pro** (redirects to Mercado Pago) rather than
+  Checkout Transparente (fully embedded). It's the simplest and safest way
+  to start; [src/lib/mercadopago.ts](src/lib/mercadopago.ts) can be migrated
+  later.
+- **No admin panel or authentication.** Products are added directly in D1
+  (see [src/db/seed.sql](src/db/seed.sql)).
+- **Sample catalog:** 8 real Printful products, with real variant ids and
+  product photos. Retail prices are derived from Printful's USD cost at the
+  2026-07-08 exchange rate (1 USD ≈ 5.16 BRL), so they need recalculating
+  if the rate moves. All of them are `customizable`: the `ready`
+  (fixed-artwork) product path exists in the code, but no product in the
+  seed uses it.
+- **Generic visual design:** swap the colors in `public/style.css`
+  (`:root`) for a real brand identity.
+
+### Legacy code kept for reference
+
+Not part of the active flow. Each file opens with a `LEGACY` note explaining
+why it's still there:
+
+- [src/lib/pod/_legacy/](src/lib/pod/_legacy/): the Gelato adapter
+  (previous provider) and an unused Montink draft, both behind the same
+  `PodProvider` interface.
+- `public/customizer.js`: the earlier Fabric.js designer, replaced by
+  Printful's EDM and no longer loaded by `index.html`.
+- `src/lib/artwork.ts`: the R2 upload helper from the Fabric.js flow.
+  Nothing calls it today, so the R2 bucket binding is idle.
+
+## Run locally
 
 ```bash
 npm install
 
-# Cria o banco D1 (uma vez só)
-wrangler d1 create pod-store-db        # copie o database_id pro wrangler.toml
+# Create the D1 database (once) and copy its database_id into wrangler.toml
+npx wrangler d1 create pod-store-db
 
 npm run db:migrate:local
 npm run db:seed:local
 
-cp .dev.vars.example .dev.vars   # preencha com chaves de teste/sandbox
+cp .dev.vars.example .dev.vars   # fill in test/sandbox credentials
 npm run dev
 ```
 
-Abra `http://localhost:8787`.
+Open `http://localhost:8787`. An `Unable to fetch the Request.cf object`
+warning in the console is expected and harmless.
 
-> Se você já tinha rodado `db:migrate:local` **antes** desta migração pra
-> Printful, o schema local está desatualizado (`order_items` ganhou a coluna
-> `pod_template_id` e `artwork_url` virou opcional). Como este projeto não
-> tem um sistema de migrations — só `schema.sql` idempotente — apague o
-> estado local do D1 (`rm -rf .wrangler/state` ou recrie o banco) e rode
-> `db:migrate:local`/`db:seed:local` de novo.
+There's no migration system: `schema.sql` is idempotent (`CREATE TABLE IF
+NOT EXISTS`), so a column change won't reach an existing local database.
+Reset it with `rm -rf .wrangler/state` and re-run the two `db:` commands.
 
-### Tokens da Printful
+## Printful setup
 
-A Printful recomenda **dois tokens separados** para o Embedded Design Maker
-— um marcado **"development purposes only"** pra uso local, outro só pra
-produção — além de um terceiro token comum pra Orders API. É o setup mais
-seguro (o token de dev nunca chega perto de pedidos reais).
+**Tokens.** Printful recommends separate private tokens: one for the Orders
+API (`PRINTFUL_API_KEY`) and, for the Embedded Design Maker
+(`PRINTFUL_EDM_TOKEN`), one token flagged "development purposes only" for
+local use plus a separate production token. This keeps the development
+token away from real orders.
 
-Neste projeto, `.dev.vars` está configurado hoje com **um único token com
-todas as extensões habilitadas** (inclusive Embedded Designer) reaproveitado
-tanto em `PRINTFUL_API_KEY` quanto em `PRINTFUL_EDM_TOKEN`, por escolha do
-usuário. Funciona, mas com uma ressalva: como esse token não tem a flag
-"development purposes only", não existe uma rede de segurança de sandbox —
-designs e pedidos de teste feitos localmente batem na conta Printful de
-verdade. Ao publicar em produção, considere trocar `PRINTFUL_EDM_TOKEN` (via
-`wrangler secret put`) por um token de produção dedicado, sem a flag de dev,
-seguindo a recomendação oficial acima.
+**Domain allowlist (manual, dashboard only).** On every token with the
+Embedded Design Maker extension, fill in **"Domains"** with the origins
+allowed to open the iframe: for example `localhost:8787` locally and the
+real domain in production. Without it, Printful ignores the iframe's
+messages.
 
-> **Pendência manual (painel da Printful, não dá pra automatizar por
-> código):** em qualquer token com a extensão Embedded Design Maker, preencha
-> a seção **"Domains"** com os domínios autorizados a abrir o iframe — pro
-> uso local, algo como `localhost:8787`; pro de produção, o domínio real do
-> site. Sem isso a Printful ignora as mensagens do iframe.
-
-### Registrar o webhook da Printful
-
-Ao contrário da Gelato, a Printful (pra uma loja "manual order"/API, sem
-sincronização com uma plataforma de e-commerce) não tem uma tela de
-webhooks no painel — o registro é feito com uma chamada à API, uma vez,
-depois do deploy:
+**Webhook registration.** API-only ("manual order") Printful stores have no
+webhook screen in the dashboard, so the webhook is registered once via the
+API, after the first deploy:
 
 ```bash
 curl -X POST https://api.printful.com/webhooks \
   -H "Authorization: Bearer $PRINTFUL_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{
-    "url": "https://SEU-DOMINIO/api/webhooks/pod",
+    "url": "https://YOUR-DOMAIN/api/webhooks/pod",
     "types": ["order_created", "order_updated", "order_failed", "order_canceled", "package_shipped"]
   }'
 ```
 
-(Só uma URL de webhook fica ativa por vez — chamar de novo substitui a
-anterior.)
+Only one webhook URL is active at a time; calling this again replaces it.
 
-### Variáveis e segredos
+## Configuration and secrets
 
-| Nome | Onde | O que é |
+| Name | Where | What it is |
 |---|---|---|
-| `POD_PROVIDER` | `wrangler.toml` [vars] | `"printful"` (`"gelato"`/`"montink"` só por compatibilidade histórica) |
-| `PRINTFUL_API_KEY` | secret | Orders API — ver "Criar os tokens da Printful" acima |
-| `PRINTFUL_EDM_TOKEN` | secret | Embedded Design Maker — token **diferente** por ambiente (dev vs produção), ver acima |
-| `MERCADOPAGO_ACCESS_TOKEN` | secret | Painel do Mercado Pago → credenciais (use as `TEST-...` primeiro) |
-| `MERCADOPAGO_WEBHOOK_SECRET` | secret | Painel do Mercado Pago → Webhooks → chave secreta |
+| `POD_PROVIDER` | `wrangler.toml` `[vars]` | `"printful"` (`"gelato"`/`"montink"` exist only for the legacy adapters) |
+| `PRINTFUL_API_KEY` | secret | Orders API token (see [Printful setup](#printful-setup)) |
+| `PRINTFUL_EDM_TOKEN` | secret | Embedded Design Maker token, different per environment (dev vs production) |
+| `MERCADOPAGO_ACCESS_TOKEN` | secret | Mercado Pago dashboard → credentials (start with the `TEST-...` ones) |
+| `MERCADOPAGO_WEBHOOK_SECRET` | secret | Mercado Pago dashboard → Webhooks → secret key |
 
-Em produção, segredos vão com `wrangler secret put NOME` — nunca no
-`wrangler.toml` nem no `.dev.vars` (que já está no `.gitignore`), e evite
-colar tokens direto no chat/terminal quando der pra evitar (fica no
-histórico da conversa/shell).
+Secrets live in `.dev.vars` locally (git-ignored) and are set with
+`wrangler secret put NAME` in production. They never go in `wrangler.toml`
+or in the source code.
 
-## Publicar
+## Deploy
 
 ```bash
 npm run db:migrate:remote
 npm run deploy
 ```
 
-Depois, configure no painel de cada fornecedor:
-- **Mercado Pago**: nada a configurar manualmente — a `notification_url`
-  já vai junto de cada preferência criada em `checkout.ts`.
-- **Printful**: registre o webhook (ver "Registrar o webhook da Printful"
-  acima) e confirme o domínio de produção na allowlist do token de
-  Embedded Design Maker.
+Then, on each provider's side:
 
-## Pendências da migração Gelato → Printful
+- **Mercado Pago:** no webhook URL to set by hand, because the
+  `notification_url` is sent with every preference (see
+  [src/routes/checkout.ts](src/routes/checkout.ts)). The signing secret
+  comes from the dashboard (see the table above).
+- **Printful:** register the webhook and add the production domain to the
+  EDM token's allowlist (see [Printful setup](#printful-setup)).
 
-- **Catálogo real**: já importado (2026-07-08) — `pod_product_uid` de
-  cada produto em `src/db/seed.sql` é um `variant_id` real da Printful
-  Catalog API, `base_price_cents` usa o custo real de cada variant, e os
-  mockups em `public/mockups/*.jpg` são fotos reais. Revisitar só se
-  adicionar produto novo ou se a cotação USD/BRL tiver mudado muito desde
-  então.
-- **Tokens do Embedded Design Maker**: criar os dois tokens (dev e
-  produção) e preencher a allowlist de domínios — ver acima.
-- **Registrar o webhook** depois do primeiro deploy — ver acima.
-- **"Entregue" nunca é alcançado automaticamente**: a Printful não expõe um
-  webhook de confirmação de entrega (só `package_shipped`, com tracking).
-  `orders.status` fica em `'shipped'` até alguém atualizar manualmente, ou
-  seguir a `tracking_url` do pedido.
-- Decidir CNPJ/MEI e emissão de nota fiscal — isso fica fora do código, é
-  configuração de conta.
-- Testar o fluxo completo de ponta a ponta com valores baixos antes de
-  abrir pra clientes de verdade — as chamadas reais à Orders API e ao EDM
-  da Printful ainda não foram exercitadas (exigem os tokens reais acima).
+## Before going live
+
+- Create the development and production EDM tokens and fill in the domain
+  allowlist.
+- Register the Printful webhook after the first deploy.
+- Fix the [known limitations](#known-limitations), at least the
+  confirmation page and the stuck-at-`paid` case.
+- Run a full end-to-end purchase with a low-value order.
+- Sort out company registration (CNPJ/MEI) and invoicing (nota fiscal).
+  That's account setup, outside the code.
+- Recheck the catalog prices if the USD/BRL rate has moved significantly
+  since 2026-07-08.
