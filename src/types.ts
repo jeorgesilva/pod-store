@@ -13,8 +13,8 @@ export interface Env {
   /** Private token with the "Embedded Designer" extension — separate from
    *  PRINTFUL_API_KEY, used only to mint EDM nonces. See README.md. */
   PRINTFUL_EDM_TOKEN: string;
-  // Historical — Gelato/Montink are no longer the active provider (see
-  // CLAUDE.md), kept only so their adapters keep compiling.
+  // Legacy: only read by the Gelato/Montink adapters in
+  // src/lib/pod/_legacy/, kept so they keep compiling.
   GELATO_API_KEY: string;
   MONTINK_API_KEY: string;
   MERCADOPAGO_ACCESS_TOKEN: string;

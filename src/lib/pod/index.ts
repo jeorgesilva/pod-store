@@ -1,6 +1,6 @@
 import type { Env } from "../../types";
-import { GelatoProvider } from "./gelato";
-import { MontinkProvider } from "./montink";
+import { GelatoProvider } from "./_legacy/gelato";
+import { MontinkProvider } from "./_legacy/montink";
 import { PrintfulProvider } from "./printful";
 import type { PodProvider } from "./types";
 
@@ -9,9 +9,9 @@ export type { PodProvider } from "./types";
 /**
  * Reads Env.POD_PROVIDER and returns the matching adapter, already
  * configured with its API key. This is the only place that needs to know
- * every provider exists. Printful is the active provider (see CLAUDE.md,
- * "Decisões já tomadas") — Gelato and Montink stay wired up here as
- * historical/reference adapters, not because either is expected to run.
+ * every provider exists. Printful is the active provider. Gelato and
+ * Montink live in ./_legacy/ and stay wired up here only as historical
+ * reference adapters, not because either is expected to run.
  */
 export function getPodProvider(env: Env): PodProvider {
   switch (env.POD_PROVIDER) {

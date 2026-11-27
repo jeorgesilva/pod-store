@@ -1,9 +1,20 @@
+/**
+ * LEGACY: kept for historical reference only, not part of the active flow.
+ *
+ * Gelato was this store's print-on-demand provider before the migration to
+ * Printful. The active adapter is ../printful.ts (POD_PROVIDER = "printful"
+ * in wrangler.toml). This file still compiles and can still be selected
+ * with POD_PROVIDER = "gelato" (see ../index.ts), but nothing runs it
+ * today. It only sends flat print-file URLs and has no support for
+ * Printful Embedded Design Maker templates, so it couldn't fulfil the
+ * current 'customizable' products anyway.
+ */
 import type {
   CreatePodOrderParams,
   CreatePodOrderResult,
   PodOrderStatusResult,
   PodProvider,
-} from "./types";
+} from "../types";
 
 /**
  * Gelato order API, v4. Docs: https://dashboard.gelato.com/docs/orders/v3/create/

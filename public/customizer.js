@@ -1,4 +1,15 @@
 /**
+ * LEGACY: not loaded by index.html or app.js; kept for reference only.
+ *
+ * This Fabric.js editor was the store's first product designer. It was
+ * replaced by the Printful Embedded Design Maker (see openPrintfulDesigner
+ * in app.js), which computes the print area itself and returns a template
+ * id instead of an exported image, so the browser no longer produces the
+ * print file. The <script> tags that used to load this file are commented
+ * out at the bottom of index.html.
+ */
+
+/**
  * ProductCustomizer wraps a Fabric.js canvas so the product page only has
  * to call a handful of methods. It shows the product mockup with a dashed
  * "print area" guide, and knows how to export ONLY that region — cropped,

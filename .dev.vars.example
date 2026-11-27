@@ -10,7 +10,7 @@ PRINTFUL_EDM_TOKEN=your_printful_edm_dev_token
 MERCADOPAGO_ACCESS_TOKEN=TEST-xxxxxxxx-xxxxxx-xxxxxxxxxxxxxxxxxxxxxxxx-xxxxxxxxx
 MERCADOPAGO_WEBHOOK_SECRET=your_webhook_signing_secret
 
-# Historical — Gelato/Montink are no longer the active POD_PROVIDER (see
-# CLAUDE.md), only needed if you switch back to one of them.
+# Legacy: only needed if POD_PROVIDER is switched back to one of the
+# adapters in src/lib/pod/_legacy/ (Printful is the active provider).
 # GELATO_API_KEY=your_gelato_sandbox_api_key
 # MONTINK_API_KEY=your_montink_api_key
