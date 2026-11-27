@@ -3,8 +3,12 @@ import type { Env } from "../types";
 
 export const ordersRoute = new Hono<{ Bindings: Env }>();
 
-// GET /api/orders/:id — used by the order confirmation page to show
-// current status (pending_payment -> paid -> submitted_to_pod -> shipped...).
+// GET /api/orders/:id — current order status (pending_payment -> paid ->
+// submitted_to_pod -> shipped...). Meant to back the order confirmation
+// page that Mercado Pago's back_urls point to (/pedido/:id), which isn't
+// built yet (see "Known limitations" in README.md). Returns only
+// non-personal fields (no customer name, email or address), since anyone
+// holding the order id can call it.
 ordersRoute.get("/:id", async (c) => {
   const id = c.req.param("id");
   const order = await c.env.DB.prepare(

@@ -14,6 +14,7 @@ binding = "DB"
 database_name = "pod-store-db"
 database_id = "66364749-baad-4a79-817d-ff10e1a1e812"
 
+# Idle today: only the legacy src/lib/artwork.ts uses it (see its header).
 [[r2_buckets]]
 binding = "ARTWORK"
 bucket_name = "pod-store-artwork"
@@ -21,6 +22,6 @@ bucket_name = "pod-store-artwork"
 # Non-secret configuration. Real secrets (API keys/tokens) must NOT go here —
 # set them with `wrangler secret put <NAME>` instead. See README.md.
 [vars]
-POD_PROVIDER = "printful"         # "printful" (active) — "gelato"/"montink" kept only as historical adapters
+POD_PROVIDER = "printful"         # "printful" (active) — "gelato"/"montink" select the legacy adapters in src/lib/pod/_legacy/
 STORE_CURRENCY = "BRL"
 PUBLIC_ARTWORK_BASE_URL = "https://pub-1f1fed2e33dc4b17881c2a545e7f490c.r2.dev"

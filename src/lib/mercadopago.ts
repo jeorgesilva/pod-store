@@ -102,6 +102,13 @@ export async function verifyWebhookSignature(params: {
   const hash = parts.v1;
   if (!ts || !hash) return false;
 
+  // Mercado Pago doesn't sign the request body. It signs a short
+  // "manifest" built from the notification's data.id, the x-request-id
+  // header and the ts value from x-signature ("ts=...,v1=..."), using the
+  // webhook secret as the HMAC-SHA256 key. Rebuilding that exact string
+  // and comparing hex digests proves the notification came from Mercado
+  // Pago. The webhook handler then re-fetches the payment from their API
+  // (getPayment), so nothing in the body is trusted either way.
   const signedTemplate = `id:${params.dataId};request-id:${params.xRequestIdHeader};ts:${ts};`;
 
   const key = await crypto.subtle.importKey(

@@ -9,6 +9,16 @@ export const printfulRoute = new Hono<{ Bindings: Env }>();
 // the Printful Embedded Design Maker iframe for this product, without ever
 // exposing PRINTFUL_EDM_TOKEN to the client. Must be called from the
 // back-end per Printful's docs: https://developers.printful.com/docs/edm/
+//
+// Where this fits in the design flow:
+//   1. browser → here: "the customer wants to design product X"
+//   2. here → Printful: resolve X's catalog product id, then mint the
+//      nonce with the secret EDM token
+//   3. browser opens Printful's iframe with the nonce; when the customer
+//      saves, Printful hands the browser a template id
+//   4. checkout.ts re-verifies that template id against our Printful
+//      account before using it in an order, since the browser could send
+//      any number
 printfulRoute.post("/edm-nonce", async (c) => {
   const body = await c.req.json<{ productId?: string }>();
   if (!body.productId) {
