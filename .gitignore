@@ -2,6 +2,10 @@ node_modules/
 .wrangler/
 dist/
 .dev.vars
+.dev.vars.*
+!.dev.vars.example
+.env
+.env.*
 credentials.local.md
 CLAUDE.md
 .DS_Store

@@ -56,7 +56,8 @@ export interface CartItemInput {
    * server-side against Printful before use — see checkout.ts.
    */
   printfulTemplateId?: number;
-  /** Raw Fabric.js canvas.toJSON(), kept for reprints/support, optional */
+  /** Legacy: raw Fabric.js canvas.toJSON(). The current flow always sends
+   *  null; stored as-is in order_items.customization_json. */
   customization?: unknown;
 }
 

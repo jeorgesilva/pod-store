@@ -7,10 +7,12 @@ import type { Env } from "../types";
 export const webhooksRoute = new Hono<{ Bindings: Env }>();
 
 // POST /api/webhooks/mercadopago
-// Configure this exact URL as the notification_url in your Mercado Pago
-// application settings. Mercado Pago calls it on every payment status
-// change (pending -> approved/rejected, refunds, etc).
+// checkout.ts sends this URL as the notification_url of every preference,
+// so there's nothing to configure per order. Mercado Pago calls it on
+// every payment status change (pending -> approved/rejected, refunds, etc).
 webhooksRoute.post("/mercadopago", async (c) => {
+  // The topic and payment id can arrive in the query string
+  // (?type=payment&data.id=...) or in the JSON body; accept either.
   const url = new URL(c.req.url);
   const type = url.searchParams.get("type") ?? (await c.req.json().catch(() => ({})))?.type;
   const dataId =
@@ -49,7 +51,10 @@ webhooksRoute.post("/mercadopago", async (c) => {
       await c.env.DB.prepare("UPDATE orders SET status = 'paid', updated_at = datetime('now') WHERE id = ?")
         .bind(orderId)
         .run();
-      // Fire-and-continue: submit to the POD provider now that we've been paid.
+      // Submit to the POD provider now that we've been paid. This is
+      // awaited, so a Printful error fails the webhook, but the status is
+      // already 'paid' and Mercado Pago's retry won't resubmit (see
+      // "Known limitations" in README.md).
       await submitOrderToPod(c.env, orderId);
     }
   } else if (paymentStatus === "rejected" || paymentStatus === "cancelled") {
@@ -70,6 +75,8 @@ webhooksRoute.post("/mercadopago", async (c) => {
 // order_created, order_updated, order_failed, order_canceled,
 // package_shipped. Confirmed against the official docs, not guessed:
 // https://developers.printful.com/docs/#tag/Webhook-management-API
+// Note: unlike the Mercado Pago route, this one doesn't authenticate the
+// sender yet (see "Known limitations" in README.md).
 webhooksRoute.post("/pod", async (c) => {
   const payload = await c.req.json<PrintfulWebhookPayload>();
   // Order-status events carry the order at data.order; package_shipped

@@ -12,8 +12,9 @@ productsRoute.get("/", async (c) => {
   return c.json({ products: results });
 });
 
-// GET /api/products/:id — single product, including the print area the
-// customizer needs to position the canvas over the mockup image.
+// GET /api/products/:id — a single active product. The current frontend
+// doesn't call it (app.js works from the list above); it's kept as part
+// of the public API.
 productsRoute.get("/:id", async (c) => {
   const id = c.req.param("id");
   const product = await c.env.DB.prepare("SELECT * FROM products WHERE id = ? AND active = 1")

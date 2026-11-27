@@ -1,8 +1,12 @@
 /**
- * Common shape both providers speak, so the rest of the app (checkout,
- * webhooks) never needs to know whether it's talking to Gelato or Montink.
- * Swapping POD_PROVIDER in wrangler.toml is the only thing that should
- * need to change to switch providers.
+ * Provider-agnostic contract for submitting print-on-demand orders, so the
+ * order-submission code (submitOrderToPod in routes/webhooks.ts) doesn't
+ * depend on any one provider's API. ./index.ts picks the adapter from
+ * POD_PROVIDER in wrangler.toml: Printful (./printful.ts) is the active
+ * one, and the Gelato and Montink adapters in ./_legacy/ implement the
+ * same interface. The Embedded Design Maker pieces (nonce route, template
+ * verification, webhook payload) are Printful-specific by nature and live
+ * outside this interface.
  */
 
 export interface PodOrderItem {
@@ -11,7 +15,7 @@ export interface PodOrderItem {
   /** The provider's product identifier (products.pod_product_uid) */
   productUid: string;
   /**
-   * Public URL of the finished, print-ready artwork (from R2). Used for
+   * Public URL of the finished, print-ready artwork. Used for
    * 'ready' products (products.default_artwork_url). Mutually exclusive
    * with printfulTemplateId — a given item has exactly one of the two.
    */
