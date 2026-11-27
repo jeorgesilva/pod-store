@@ -7,7 +7,7 @@
 -- public/mockups/*.jpg. base_price_cents = custo_producao (USD da
 -- Printful, convertido a BRL na cotação do dia, 1 USD = 5.16 BRL) × 1.75
 -- ÷ (1 − 0.0499) — fórmula da margem líquida após a taxa do Checkout Pro
--- do Mercado Pago (ver CLAUDE.md).
+-- do Mercado Pago.
 --
 -- print_width_mm / print_height_mm e print_area_json continuam só para o
 -- customizer.js legado (fora do fluxo principal) — o Embedded Design

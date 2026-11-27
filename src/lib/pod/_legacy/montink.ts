@@ -1,9 +1,17 @@
+/**
+ * LEGACY: kept for historical reference only, not part of the active flow.
+ *
+ * An early draft adapter for Montink (a Brazilian print-on-demand
+ * provider) that was never used or verified against Montink's real API
+ * (see "READ ME FIRST" below). The active adapter is ../printful.ts
+ * (POD_PROVIDER = "printful" in wrangler.toml).
+ */
 import type {
   CreatePodOrderParams,
   CreatePodOrderResult,
   PodOrderStatusResult,
   PodProvider,
-} from "./types";
+} from "../types";
 
 /**
  * ============================== READ ME FIRST ==============================

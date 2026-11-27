@@ -3,4 +3,5 @@ node_modules/
 dist/
 .dev.vars
 credentials.local.md
+CLAUDE.md
 .DS_Store

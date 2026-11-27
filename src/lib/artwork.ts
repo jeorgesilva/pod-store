@@ -1,3 +1,15 @@
+/**
+ * LEGACY: nothing imports this today; kept in case a file-upload flow
+ * comes back.
+ *
+ * It belonged to the Fabric.js designer flow (public/customizer.js), where
+ * the browser exported a PNG that had to be stored in R2 for the POD
+ * provider to download. Neither product type uploads artwork now:
+ * 'customizable' products use a Printful Embedded Design Maker template
+ * id, and 'ready' products use the fixed default_artwork_url from D1. The
+ * same goes for the ARTWORK R2 binding and PUBLIC_ARTWORK_BASE_URL in
+ * wrangler.toml: nothing else reads them, so they sit idle.
+ */
 import type { Env } from "../types";
 
 /**
